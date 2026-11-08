@@ -6,9 +6,15 @@
   "main": "main.js",
   "scripts": {
     "start": "electron .",
-    "install:desktop": "bash install.sh"
+    "install:desktop": "bash install.sh",
+    "pack": "electron-builder --dir",
+    "dist": "electron-builder",
+    "dist:linux": "electron-builder --linux",
+    "dist:win": "electron-builder --win",
+    "dist:mac": "electron-builder --mac"
   },
   "devDependencies": {
-    "electron": "^31.7.7"
+    "electron": "^31.7.7",
+    "electron-builder": "^26.18.0"
   }
 }

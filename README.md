@@ -134,6 +134,37 @@ Notes:
   Empty page names fall back to `Page 1`, `Page 2`, and so on.
 - Duplicate names get a numeric suffix so no file is overwritten.
 
+## Builds and releases
+
+The app can be packaged for Linux, Windows, and macOS with
+[electron-builder](https://www.electron.build/):
+
+```bash
+npm run dist:linux   # AppImage + .deb
+npm run dist:win     # NSIS installer (.exe)
+npm run dist:mac     # .dmg + .zip (universal)
+```
+
+Artifacts are written to `dist/`.
+
+Native builds for all three platforms are produced by the
+`.github/workflows/release.yml` GitHub Actions workflow. Push a tag to start a
+release:
+
+```bash
+git tag v1.0.0
+git push origin v1.0.0
+```
+
+The workflow builds on Ubuntu, Windows, and macOS runners and attaches the
+installers to the GitHub Release. You can also start it manually from the
+Actions tab.
+
+The released builds are currently **unsigned**. Windows may show a SmartScreen
+warning and macOS may require opening the app from the context menu; code
+signing and notarization require platform certificates configured as repository
+secrets.
+
 ## Files
 
 - `main.js` — Electron main process: capture, quality modes, export/ZIP
