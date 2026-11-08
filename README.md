@@ -158,7 +158,7 @@ git push origin v1.0.0
 
 The workflow builds on Ubuntu, Windows, and macOS runners and attaches the
 installers to the GitHub Release. You can also start it manually from the
-Actions tab.
+Actions tab to build the installers without publishing a release.
 
 The released builds are currently **unsigned**. Windows may show a SmartScreen
 warning and macOS may require opening the app from the context menu; code
