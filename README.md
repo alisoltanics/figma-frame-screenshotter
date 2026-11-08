@@ -1,0 +1,143 @@
+# Figma Frame Screenshotter
+
+A small Electron app that captures Figma frames as PNG files. It reads a
+`links.json` file, captures every item, splits very tall frames into several
+tiles, and reports exactly which files were saved where.
+
+## Install and run
+
+```bash
+npm install
+npm start
+```
+
+To add the app to your Ubuntu application list with an icon:
+
+```bash
+./install.sh
+```
+
+The app has a single runtime dependency: `electron`. There is no build step.
+
+## Signing in
+
+Click **Sign in to Figma** and sign in manually in the window that opens. The
+status badge in the header updates automatically.
+
+If you are already signed in to Figma in Firefox, click **Use Firefox session**
+to import the `figma.com` cookies. The session is stored in the persistent
+`persist:figma` partition. Tokens, cookies, and passwords are never logged or
+written to disk by the app.
+
+## Capture a batch
+
+1. Choose a `links.json` file.
+2. Choose an output folder.
+3. Pick a quality mode.
+4. Click **Start**. Click **Stop** at any time to stop promptly; files that were
+   not fully captured are not written.
+
+### Quality modes
+
+| Mode | How it captures | Result |
+| --- | --- | --- |
+| **Normal (2x)** | Figma's *Copy as PNG* | 2x pixel density, fast |
+| **High (4x)** | Figma's *Export* panel at **4x** | 4x pixel density, sharper and larger |
+
+High quality downloads the export as a ZIP file, extracts every PNG, and then
+tiles long frames locally. Temporary ZIPs are deleted immediately after
+extraction. If the high-quality export is not available for an item, the app
+logs it and falls back to normal quality.
+
+A link can point at:
+
+- **A frame** — `...?node-id=1-2` captures that frame.
+- **Several nodes** — `node-id=1-2%2C3-4` or a `nodeId` with commas captures
+  every listed node.
+- **A page** — a page id or a link with no `node-id` selects all top-level
+  frames on that page and captures each one separately.
+
+## Output layout
+
+```text
+<output folder>/
+  <folder>/
+    <name>.png
+    <name>-01.png
+    <name>-02.png
+    ...
+```
+
+- `folder` and `name` come from each `links.json` entry.
+- A single captured image is saved as `<name>.png`.
+- Multiple images (several nodes, or a long frame split into tiles) use
+  `<name>-01.png`, `<name>-02.png`, and so on.
+- Long frames are split into overlapping tiles so no content is lost at the
+  cut. Tiles are numbered in reading order.
+
+When a run finishes, the **Summary** panel shows:
+
+- how many items succeeded or failed, with the reason for each failure,
+- the full output folder path with a **Copy path** button,
+- a **Saved files** report grouping every written file by its links entry.
+
+## links.json
+
+The file is a JSON array. Each entry has `folder`, `name`, `nodeId`, and `url`:
+
+```json
+[
+  {
+    "folder": "landing",
+    "name": "desktop",
+    "nodeId": "1-2",
+    "url": "https://www.figma.com/design/AbCdEf123456/Example-Project?node-id=1-2"
+  },
+  {
+    "folder": "landing",
+    "name": "mobile",
+    "nodeId": "",
+    "url": "https://www.figma.com/design/AbCdEf123456/Example-Project"
+  }
+]
+```
+
+- `folder` is the output subfolder.
+- `name` is the file name (without `.png`).
+- `nodeId` is optional when the URL already contains `node-id`.
+- Entries without a `nodeId` and without a `node-id` in the URL capture every
+  top-level frame on the page.
+
+Click **Sample JSON** in the app to see this structure at any time. **Save JSON**
+writes the currently loaded entries back to a file.
+
+## Generate links.json from a project
+
+Enter a Figma project or file link in the **Generate links.json from a Figma
+project** section, for example:
+
+```text
+https://www.figma.com/design/AbCdEf123456/Example-Project
+```
+
+Click **Generate links.json**. The app reads every page and every top-level
+frame in the file, builds one entry per frame, saves the JSON file where you
+choose, and loads the generated entries into the app so you can start a capture
+immediately.
+
+Notes:
+
+- The Figma file must be openable with your current session.
+- The Pages and Layers panels must be available; the app uses them to enumerate
+  pages and frames.
+- Page names are cleaned for use as folder names (leading symbols are removed).
+  Empty page names fall back to `Page 1`, `Page 2`, and so on.
+- Duplicate names get a numeric suffix so no file is overwritten.
+
+## Files
+
+- `main.js` — Electron main process: capture, quality modes, export/ZIP
+  handling, tiling, JSON generation, and IPC.
+- `preload.js` — the small secure bridge exposed to the UI.
+- `index.html` — the interface (HTML/CSS/JS, no framework).
+- `install.sh` / `launch.sh` — optional desktop integration helpers.

@@ -1,0 +1,1787 @@
+<!doctype html>
+<html lang="en" dir="ltr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline'; script-src 'unsafe-inline'; img-src data:;">
+  <title>Figma Frame Screenshotter</title>
+  <style>
+    :root {
+      color-scheme: dark;
+      --bg: #080d19;
+      --panel: rgba(18, 26, 46, 0.82);
+      --panel-solid: #121a2e;
+      --border: rgba(148, 163, 184, 0.17);
+      --border-strong: rgba(148, 163, 184, 0.3);
+      --text: #eef3ff;
+      --muted: #92a0ba;
+      --accent: #7c9cff;
+      --accent-strong: #9db5ff;
+      --success: #39d98a;
+      --danger: #ff7a90;
+      --warning: #f6c85f;
+      --radius: 18px;
+      font-family: "Segoe UI", Tahoma, Arial, sans-serif;
+    }
+
+    * { box-sizing: border-box; }
+
+    [hidden] { display: none !important; }
+
+    html, body { min-height: 100%; }
+
+    body {
+      margin: 0;
+      color: var(--text);
+      background:
+        radial-gradient(circle at 12% -10%, rgba(94, 128, 255, 0.28), transparent 36rem),
+        radial-gradient(circle at 95% 10%, rgba(57, 217, 138, 0.08), transparent 30rem),
+        var(--bg);
+      font-size: 14px;
+      line-height: 1.65;
+    }
+
+    button { font: inherit; }
+
+    .shell {
+      width: min(1040px, calc(100% - 36px));
+      margin: 0 auto;
+      padding: 30px 0 40px;
+    }
+
+    .hero {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 28px;
+      margin-bottom: 24px;
+    }
+
+    .eyebrow {
+      margin: 0 0 6px;
+      color: var(--accent-strong);
+      font-size: 12px;
+      font-weight: 700;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+    }
+
+    h1 {
+      margin: 0;
+      font-size: clamp(26px, 3.8vw, 38px);
+      line-height: 1.25;
+      letter-spacing: -0.02em;
+    }
+
+    .lede {
+      max-width: 620px;
+      margin: 10px 0 0;
+      color: var(--muted);
+    }
+
+    .panel {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      box-shadow: 0 18px 60px rgba(0, 0, 0, 0.24);
+      backdrop-filter: blur(14px);
+    }
+
+    .setup {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) minmax(0, 0.85fr) auto;
+      gap: 18px;
+      align-items: stretch;
+      padding: 20px;
+      margin-bottom: 18px;
+    }
+
+    .picker {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      min-width: 0;
+    }
+
+    .field-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      min-height: 24px;
+    }
+
+    .field-head h2,
+    .panel-head h2,
+    .summary h2,
+    .generate-panel h2 {
+      margin: 0;
+      font-size: 14px;
+      font-weight: 700;
+    }
+
+    .meta {
+      overflow: hidden;
+      color: var(--muted);
+      font-size: 12px;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .button {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 42px;
+      padding: 0 18px;
+      color: var(--text);
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid var(--border-strong);
+      border-radius: 12px;
+      cursor: pointer;
+      transition: background 130ms ease, border-color 130ms ease, transform 130ms ease;
+      white-space: nowrap;
+    }
+
+    .button:hover:not(:disabled) {
+      background: rgba(255, 255, 255, 0.09);
+      border-color: rgba(157, 181, 255, 0.55);
+    }
+
+    .button:active:not(:disabled) { transform: translateY(1px); }
+
+    .button:focus-visible {
+      outline: 3px solid rgba(124, 156, 255, 0.42);
+      outline-offset: 2px;
+    }
+
+    .button:disabled {
+      opacity: 0.45;
+      cursor: not-allowed;
+    }
+
+    .button.primary {
+      min-width: 156px;
+      color: #081021;
+      background: linear-gradient(135deg, #a7bcff, #7c9cff);
+      border-color: transparent;
+      font-weight: 800;
+    }
+
+    .button.primary:hover:not(:disabled) {
+      background: linear-gradient(135deg, #bdcbff, #8ea9ff);
+    }
+
+    .button.ghost {
+      flex: 0 0 auto;
+      margin-top: 5px;
+      background: rgba(124, 156, 255, 0.09);
+      border-color: rgba(124, 156, 255, 0.35);
+    }
+
+    .button.danger {
+      color: var(--danger);
+      background: rgba(255, 122, 144, 0.08);
+      border-color: rgba(255, 122, 144, 0.35);
+    }
+
+    .button.danger:hover:not(:disabled) {
+      background: rgba(255, 122, 144, 0.15);
+      border-color: rgba(255, 122, 144, 0.55);
+    }
+
+    .button.small {
+      min-height: 34px;
+      padding: 0 12px;
+      font-size: 12px;
+    }
+
+    .picker-actions {
+      display: grid;
+      gap: 8px;
+    }
+
+    .picker-actions .button { margin-top: 0; }
+
+    .button-row {
+      display: flex;
+      gap: 8px;
+    }
+
+    .button-row .button {
+      flex: 1 1 0;
+      min-width: 0;
+      padding: 0 10px;
+      font-size: 12px;
+    }
+
+    .hero-actions {
+      display: flex;
+      flex: 0 0 auto;
+      flex-direction: column;
+      align-items: flex-end;
+      gap: 10px;
+    }
+
+    .hero-buttons {
+      display: flex;
+      gap: 8px;
+    }
+
+    .hero-buttons .button {
+      margin-top: 0;
+    }
+
+    .session-status {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      min-height: 30px;
+      padding: 0 12px;
+      color: var(--muted);
+      font: inherit;
+      font-size: 12px;
+      background: rgba(255, 255, 255, 0.03);
+      border: 1px solid var(--border);
+      border-radius: 999px;
+      cursor: pointer;
+    }
+
+    .session-status::before {
+      width: 8px;
+      height: 8px;
+      background: var(--muted);
+      border-radius: 50%;
+      content: '';
+    }
+
+    .session-status[data-state="in"] {
+      color: var(--success);
+      border-color: rgba(57, 217, 138, 0.35);
+    }
+
+    .session-status[data-state="in"]::before {
+      background: var(--success);
+      box-shadow: 0 0 8px rgba(57, 217, 138, 0.65);
+    }
+
+    .session-status[data-state="out"] {
+      color: var(--danger);
+      border-color: rgba(255, 122, 144, 0.35);
+    }
+
+    .session-status[data-state="out"]::before { background: var(--danger); }
+
+    .start-block {
+      display: flex;
+      flex-direction: column;
+      align-items: stretch;
+      justify-content: center;
+      gap: 9px;
+      min-width: 170px;
+      padding-right: 18px;
+      border-right: 1px solid var(--border);
+    }
+
+    .hint {
+      color: var(--muted);
+      font-size: 11px;
+      line-height: 1.5;
+      text-align: center;
+    }
+
+    .segmented {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 4px;
+      padding: 4px;
+      background: rgba(255, 255, 255, 0.04);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+    }
+
+    .segment {
+      position: relative;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 34px;
+      padding: 0 6px;
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 650;
+      border-radius: 9px;
+      cursor: pointer;
+      transition: background 130ms ease, color 130ms ease;
+      white-space: nowrap;
+    }
+
+    .segment input {
+      position: absolute;
+      width: 1px;
+      height: 1px;
+      opacity: 0;
+      pointer-events: none;
+    }
+
+    .segment:has(input:checked) {
+      color: #081021;
+      background: linear-gradient(135deg, #a7bcff, #7c9cff);
+    }
+
+    .segment:has(input:focus-visible) {
+      outline: 3px solid rgba(124, 156, 255, 0.42);
+      outline-offset: 2px;
+    }
+
+    .segmented[data-disabled="true"] {
+      opacity: 0.45;
+      cursor: not-allowed;
+    }
+
+    .quality-hint {
+      min-height: 33px;
+      text-align: left;
+    }
+
+    .generate-panel {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto;
+      gap: 12px 14px;
+      align-items: end;
+      padding: 20px;
+      margin-bottom: 18px;
+    }
+
+    .generate-head {
+      grid-column: 1 / -1;
+      display: flex;
+      align-items: baseline;
+      justify-content: space-between;
+      gap: 14px;
+    }
+
+    .generate-head p {
+      margin: 0;
+      color: var(--muted);
+      font-size: 12px;
+    }
+
+    .generate-field {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      min-width: 0;
+    }
+
+    .input {
+      width: 100%;
+      min-height: 42px;
+      padding: 0 14px;
+      color: var(--text);
+      background: rgba(3, 7, 15, 0.55);
+      border: 1px solid var(--border-strong);
+      border-radius: 12px;
+      font: inherit;
+      font-size: 13px;
+    }
+
+    .input::placeholder { color: #6f7c95; }
+
+    .input:focus-visible {
+      outline: 3px solid rgba(124, 156, 255, 0.42);
+      outline-offset: 2px;
+      border-color: rgba(157, 181, 255, 0.55);
+    }
+
+    .generate-hint {
+      grid-column: 1 / -1;
+      min-height: 18px;
+      color: var(--muted);
+      font-size: 11px;
+    }
+
+    .progress-panel,
+    .log-panel,
+    .summary {
+      padding: 20px;
+      margin-bottom: 18px;
+    }
+
+    .panel-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      margin-bottom: 13px;
+    }
+
+    .progress-text {
+      color: var(--muted);
+      font-size: 12px;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .progress-track {
+      height: 8px;
+      overflow: hidden;
+      margin-bottom: 16px;
+      background: rgba(255, 255, 255, 0.07);
+      border-radius: 999px;
+    }
+
+    .progress-bar {
+      width: 0;
+      height: 100%;
+      background: linear-gradient(90deg, #7c9cff, #6be1ad);
+      border-radius: inherit;
+      transition: width 220ms ease;
+    }
+
+    .item-list {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      max-height: 330px;
+      margin: 0;
+      padding: 0;
+      overflow-y: auto;
+      list-style: none;
+      scrollbar-width: thin;
+      scrollbar-color: rgba(148, 163, 184, 0.35) transparent;
+    }
+
+    .empty {
+      padding: 22px 10px;
+      color: var(--muted);
+      text-align: center;
+      border: 1px dashed var(--border);
+      border-radius: 12px;
+    }
+
+    .item-row {
+      display: grid;
+      grid-template-columns: auto minmax(0, 1fr) auto;
+      gap: 11px;
+      align-items: center;
+      padding: 10px 12px;
+      background: rgba(255, 255, 255, 0.028);
+      border: 1px solid transparent;
+      border-radius: 12px;
+    }
+
+    .item-row[data-status="working"] {
+      background: rgba(124, 156, 255, 0.07);
+      border-color: rgba(124, 156, 255, 0.25);
+    }
+
+    .status-dot {
+      width: 9px;
+      height: 9px;
+      background: var(--muted);
+      border-radius: 50%;
+      box-shadow: 0 0 0 4px rgba(148, 163, 184, 0.08);
+    }
+
+    .item-row[data-status="working"] .status-dot {
+      background: var(--warning);
+      box-shadow: 0 0 0 4px rgba(246, 200, 95, 0.12);
+      animation: pulse 1.15s ease-in-out infinite;
+    }
+
+    .item-row[data-status="success"] .status-dot {
+      background: var(--success);
+      box-shadow: 0 0 0 4px rgba(57, 217, 138, 0.12);
+    }
+
+    .item-row[data-status="error"] .status-dot {
+      background: var(--danger);
+      box-shadow: 0 0 0 4px rgba(255, 122, 144, 0.12);
+    }
+
+    @keyframes pulse {
+      50% { opacity: 0.35; }
+    }
+
+    .item-copy {
+      min-width: 0;
+    }
+
+    .item-name {
+      display: block;
+      overflow: hidden;
+      font-size: 13px;
+      font-weight: 650;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .item-path {
+      display: block;
+      overflow: hidden;
+      color: var(--muted);
+      font-size: 11px;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .item-note {
+      grid-column: 2 / -1;
+      margin: -4px 0 0;
+      color: var(--danger);
+      font-size: 11px;
+    }
+
+    .badge {
+      min-width: 76px;
+      padding: 3px 9px;
+      font-size: 11px;
+      font-weight: 700;
+      text-align: center;
+      border: 1px solid var(--border);
+      border-radius: 999px;
+    }
+
+    .badge[data-status="waiting"] { color: var(--muted); }
+    .badge[data-status="working"] { color: var(--warning); border-color: rgba(246, 200, 95, 0.3); }
+    .badge[data-status="success"] { color: var(--success); border-color: rgba(57, 217, 138, 0.3); }
+    .badge[data-status="error"] { color: var(--danger); border-color: rgba(255, 122, 144, 0.3); }
+
+    .summary {
+      display: grid;
+      grid-template-columns: minmax(0, 0.8fr) minmax(0, 1.3fr) auto;
+      gap: 20px;
+      align-items: start;
+    }
+
+    .summary-counts {
+      margin: 8px 0 0;
+      color: var(--muted);
+      font-size: 13px;
+    }
+
+    .summary-counts strong {
+      color: var(--text);
+      font-size: 19px;
+    }
+
+    .success-count { color: var(--success) !important; }
+    .failure-count { color: var(--danger) !important; }
+
+    .failures h3,
+    .saved-report h3 {
+      margin: 0 0 7px;
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 700;
+    }
+
+    .failure-list {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      max-height: 110px;
+      margin: 0;
+      padding: 0;
+      overflow-y: auto;
+      list-style: none;
+      color: var(--danger);
+      font-size: 12px;
+    }
+
+    .failure-list .failure-label {
+      color: var(--text);
+      font-weight: 650;
+    }
+
+    .summary .open-output { justify-self: end; }
+
+    .summary-details {
+      grid-column: 1 / -1;
+      display: grid;
+      gap: 16px;
+      padding-top: 4px;
+      border-top: 1px solid var(--border);
+    }
+
+    .output-box {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      min-width: 0;
+      padding: 10px 12px;
+      background: rgba(3, 7, 15, 0.55);
+      border: 1px solid rgba(148, 163, 184, 0.14);
+      border-radius: 12px;
+    }
+
+    .output-box .output-label {
+      flex: 0 0 auto;
+      color: var(--muted);
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+    }
+
+    .output-path {
+      flex: 1 1 auto;
+      min-width: 0;
+      overflow-wrap: anywhere;
+      color: #c9d5ec;
+      font-family: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
+      font-size: 12px;
+      line-height: 1.5;
+    }
+
+    .saved-report-list {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      max-height: 250px;
+      overflow-y: auto;
+      scrollbar-width: thin;
+      scrollbar-color: rgba(148, 163, 184, 0.35) transparent;
+    }
+
+    .saved-group {
+      padding: 10px 12px;
+      background: rgba(255, 255, 255, 0.028);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+    }
+
+    .saved-group-head {
+      display: flex;
+      align-items: baseline;
+      justify-content: space-between;
+      gap: 12px;
+      font-size: 12px;
+    }
+
+    .saved-group-name {
+      overflow: hidden;
+      font-weight: 650;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .saved-count {
+      flex: 0 0 auto;
+      color: var(--muted);
+      font-size: 11px;
+    }
+
+    .saved-files {
+      display: flex;
+      flex-direction: column;
+      gap: 3px;
+      margin: 6px 0 0;
+      padding: 0;
+      list-style: none;
+    }
+
+    .saved-file {
+      overflow-wrap: anywhere;
+      color: var(--muted);
+      font-family: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
+      font-size: 11px;
+      line-height: 1.6;
+    }
+
+    .saved-file .saved-label {
+      color: #c9d5ec;
+      font-family: "Segoe UI", Tahoma, Arial, sans-serif;
+      font-size: 11px;
+    }
+
+    .saved-empty {
+      color: var(--muted);
+      font-size: 12px;
+    }
+
+    .log-panel { margin-bottom: 0; }
+
+    .live-dot {
+      display: inline-flex;
+      align-items: center;
+      gap: 7px;
+      color: var(--muted);
+      font-size: 11px;
+    }
+
+    .live-dot::before {
+      width: 7px;
+      height: 7px;
+      content: "";
+      background: var(--success);
+      border-radius: 50%;
+      box-shadow: 0 0 10px rgba(57, 217, 138, 0.7);
+    }
+
+    .log-view {
+      height: 190px;
+      padding: 12px 14px;
+      overflow-y: auto;
+      color: #b9c5dc;
+      background: rgba(3, 7, 15, 0.62);
+      border: 1px solid rgba(148, 163, 184, 0.12);
+      border-radius: 12px;
+      font-family: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
+      font-size: 11px;
+      line-height: 1.75;
+      scrollbar-width: thin;
+      scrollbar-color: rgba(148, 163, 184, 0.35) transparent;
+    }
+
+    .log-line {
+      display: flex;
+      gap: 10px;
+      align-items: baseline;
+    }
+
+    .log-time {
+      flex: 0 0 auto;
+      color: #62708c;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .log-message {
+      min-width: 0;
+      overflow-wrap: anywhere;
+    }
+
+    .log-message[data-level="success"] { color: #8ce8b9; }
+    .log-message[data-level="error"] { color: #ff9aaa; }
+
+    .modal-backdrop {
+      position: fixed;
+      inset: 0;
+      z-index: 50;
+      display: grid;
+      place-items: center;
+      padding: 20px;
+      background: rgba(3, 7, 15, 0.74);
+      backdrop-filter: blur(6px);
+    }
+
+    .modal {
+      display: flex;
+      flex-direction: column;
+      width: min(720px, 100%);
+      max-height: min(82vh, 720px);
+      overflow: hidden;
+      background: var(--panel-solid);
+      border: 1px solid var(--border-strong);
+      border-radius: var(--radius);
+      box-shadow: 0 30px 90px rgba(0, 0, 0, 0.5);
+    }
+
+    .modal-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      padding: 16px 20px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .modal-head h2 {
+      margin: 0;
+      font-size: 15px;
+    }
+
+    .modal-body {
+      margin: 0;
+      padding: 18px 20px;
+      overflow: auto;
+      color: #c9d5ec;
+      font-family: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
+      font-size: 12px;
+      line-height: 1.7;
+      scrollbar-width: thin;
+      scrollbar-color: rgba(148, 163, 184, 0.35) transparent;
+    }
+
+    .modal-foot {
+      padding: 0 20px 18px;
+      color: var(--muted);
+      font-size: 12px;
+    }
+
+    @media (max-width: 820px) {
+      .shell { width: min(100% - 24px, 1040px); padding-top: 20px; }
+      .hero { flex-direction: column; gap: 12px; }
+      .hero .button { margin-top: 0; }
+      .hero-actions { align-items: stretch; }
+      .hero-buttons { flex-wrap: wrap; }
+      .hero-buttons .button { flex: 1 1 auto; }
+      .setup { grid-template-columns: 1fr; }
+      .start-block {
+        padding: 16px 0 0;
+        border-top: 1px solid var(--border);
+        border-right: 0;
+      }
+      .generate-panel { grid-template-columns: 1fr; }
+      .generate-head { flex-direction: column; gap: 2px; }
+      .summary { grid-template-columns: 1fr; }
+      .summary .open-output { justify-self: stretch; }
+      .output-box { flex-wrap: wrap; }
+      .output-box .button { flex: 1 1 auto; }
+    }
+  </style>
+</head>
+<body>
+  <div class="shell">
+    <header class="hero">
+      <div>
+        <p class="eyebrow">Figma → PNG</p>
+        <h1>Figma Frame Screenshotter</h1>
+        <p class="lede">
+          Sign in to Figma or import your Firefox session; the sign-in status is shown above the app.
+          The session stays on this device.
+        </p>
+      </div>
+      <div class="hero-actions">
+        <button id="sessionStatus" class="session-status" type="button" data-state="checking" title="Click to check again">Checking Figma session…</button>
+        <div class="hero-buttons">
+          <button id="loginBtn" class="button ghost" type="button">Sign in to Figma</button>
+          <button id="importBtn" class="button ghost" type="button">Use Firefox session</button>
+        </div>
+      </div>
+    </header>
+
+    <main>
+      <section class="panel setup" aria-label="Run settings">
+        <div class="picker">
+          <div class="field-head">
+            <h2>Links file</h2>
+            <span id="linksMeta" class="meta" title="">Not selected</span>
+          </div>
+          <div class="picker-actions">
+            <button id="chooseLinksBtn" class="button" type="button">Choose links.json</button>
+            <div class="button-row">
+              <button id="sampleJsonBtn" class="button ghost small" type="button">Sample JSON</button>
+              <button id="saveLinksBtn" class="button ghost small" type="button" disabled>Save JSON</button>
+            </div>
+          </div>
+        </div>
+
+        <div class="picker">
+          <div class="field-head">
+            <h2>Output folder</h2>
+            <span id="outputMeta" class="meta" title="">Not selected</span>
+          </div>
+          <button id="chooseOutputBtn" class="button" type="button">Choose output folder</button>
+        </div>
+
+        <div class="picker quality-picker">
+          <div class="field-head">
+            <h2>Output quality</h2>
+            <span class="meta">PNG</span>
+          </div>
+          <div id="qualityGroup" class="segmented" role="radiogroup" aria-label="Output quality" data-disabled="false">
+            <label class="segment">
+              <input type="radio" name="quality" value="normal" checked>
+              <span>Normal 2x</span>
+            </label>
+            <label class="segment">
+              <input type="radio" name="quality" value="high">
+              <span>High 4x</span>
+            </label>
+          </div>
+          <span id="qualityHint" class="hint quality-hint">2x output — faster.</span>
+        </div>
+
+        <div class="start-block">
+          <button id="startBtn" class="button primary" type="button" disabled>Start</button>
+          <button id="stopBtn" class="button danger" type="button" disabled>Stop</button>
+          <span id="startHint" class="hint">Choose a links file and an output folder first.</span>
+        </div>
+      </section>
+
+      <section class="panel generate-panel" aria-labelledby="generateTitle">
+        <div class="generate-head">
+          <h2 id="generateTitle">Generate links.json from a Figma project</h2>
+          <p>Every page and top-level frame is listed automatically.</p>
+        </div>
+        <div class="generate-field">
+          <label class="meta" for="projectUrl">Figma project or file link</label>
+          <input
+            id="projectUrl"
+            class="input"
+            type="url"
+            spellcheck="false"
+            autocomplete="off"
+            placeholder="https://www.figma.com/design/AbCdEf123456/Example-Project"
+          >
+        </div>
+        <button id="generateBtn" class="button primary" type="button">Generate links.json</button>
+        <span id="generateHint" class="generate-hint">Reads all pages and frames, saves a JSON file, and loads it here.</span>
+      </section>
+
+      <section class="panel progress-panel" aria-labelledby="progressTitle">
+        <div class="panel-head">
+          <h2 id="progressTitle">Item status</h2>
+          <span id="progressText" class="progress-text">0 of 0</span>
+        </div>
+        <div
+          id="progressTrack"
+          class="progress-track"
+          role="progressbar"
+          aria-label="Screenshot progress"
+          aria-valuemin="0"
+          aria-valuemax="0"
+          aria-valuenow="0"
+        >
+          <div id="progressBar" class="progress-bar"></div>
+        </div>
+        <ul id="itemList" class="item-list">
+          <li class="empty">No links file selected yet.</li>
+        </ul>
+      </section>
+
+      <section id="summaryPanel" class="panel summary" aria-labelledby="summaryTitle" hidden>
+        <div>
+          <h2 id="summaryTitle">Summary</h2>
+          <p class="summary-counts">
+            <strong id="successCount" class="success-count">0</strong> succeeded
+            &nbsp;·&nbsp;
+            <strong id="failedCount" class="failure-count">0</strong> failed
+          </p>
+        </div>
+        <div class="failures">
+          <h3>Failed items</h3>
+          <ul id="failureList" class="failure-list"></ul>
+        </div>
+        <button id="openOutputBtn" class="button open-output" type="button" disabled>Open output folder</button>
+
+        <div class="summary-details">
+          <div class="output-box">
+            <span class="output-label">Saved to</span>
+            <span id="outputPath" class="output-path">—</span>
+            <button id="copyOutputBtn" class="button ghost small" type="button" disabled>Copy path</button>
+          </div>
+
+          <div class="saved-report">
+            <h3>Saved files</h3>
+            <div id="savedReportList" class="saved-report-list">
+              <span class="saved-empty">No files were saved.</span>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section class="panel log-panel" aria-labelledby="logTitle">
+        <div class="panel-head">
+          <h2 id="logTitle">Live log</h2>
+          <span class="live-dot">Live</span>
+        </div>
+        <div id="logView" class="log-view" role="log" aria-live="polite" aria-relevant="additions"></div>
+      </section>
+    </main>
+  </div>
+
+  <div id="sampleModal" class="modal-backdrop" role="dialog" aria-modal="true" aria-labelledby="sampleTitle" hidden>
+    <div class="modal">
+      <div class="modal-head">
+        <h2 id="sampleTitle">links.json structure</h2>
+        <button id="closeSampleBtn" class="button ghost small" type="button">Close</button>
+      </div>
+      <pre id="sampleJson" class="modal-body"></pre>
+      <p class="modal-foot">
+        <strong>folder</strong> is the output subfolder, <strong>name</strong> is the file name, and
+        <strong>nodeId</strong> is optional. Links with a node id capture that frame; a link without one
+        captures every top-level frame on the page.
+      </p>
+    </div>
+  </div>
+
+  <script>
+    (() => {
+      'use strict';
+
+      const api = window.figmaScreenshots;
+      const STATUS_LABELS = {
+        waiting: 'Waiting',
+        working: 'Working',
+        success: 'Saved',
+        error: 'Error'
+      };
+
+      const SAMPLE_LINKS = [
+        {
+          folder: 'landing',
+          name: 'desktop',
+          nodeId: '1-2',
+          url: 'https://www.figma.com/design/AbCdEf123456/Example-Project?node-id=1-2'
+        },
+        {
+          folder: 'landing',
+          name: 'mobile',
+          nodeId: '',
+          url: 'https://www.figma.com/design/AbCdEf123456/Example-Project'
+        },
+        {
+          folder: 'login',
+          name: 'desktop-otp',
+          nodeId: '3-4',
+          url: 'https://www.figma.com/design/AbCdEf123456/Example-Project?node-id=3-4'
+        }
+      ];
+
+      const state = {
+        items: [],
+        outputDir: '',
+        quality: 'normal',
+        running: false,
+        stopping: false,
+        generating: false,
+        session: null
+      };
+
+      const elements = {
+        loginBtn: document.getElementById('loginBtn'),
+        importBtn: document.getElementById('importBtn'),
+        sessionStatus: document.getElementById('sessionStatus'),
+        chooseLinksBtn: document.getElementById('chooseLinksBtn'),
+        sampleJsonBtn: document.getElementById('sampleJsonBtn'),
+        saveLinksBtn: document.getElementById('saveLinksBtn'),
+        chooseOutputBtn: document.getElementById('chooseOutputBtn'),
+        qualityGroup: document.getElementById('qualityGroup'),
+        qualityHint: document.getElementById('qualityHint'),
+        qualityInputs: Array.from(document.querySelectorAll('input[name="quality"]')),
+        startBtn: document.getElementById('startBtn'),
+        stopBtn: document.getElementById('stopBtn'),
+        startHint: document.getElementById('startHint'),
+        linksMeta: document.getElementById('linksMeta'),
+        outputMeta: document.getElementById('outputMeta'),
+        projectUrl: document.getElementById('projectUrl'),
+        generateBtn: document.getElementById('generateBtn'),
+        generateHint: document.getElementById('generateHint'),
+        progressBar: document.getElementById('progressBar'),
+        progressText: document.getElementById('progressText'),
+        progressTrack: document.getElementById('progressTrack'),
+        itemList: document.getElementById('itemList'),
+        logView: document.getElementById('logView'),
+        summaryPanel: document.getElementById('summaryPanel'),
+        successCount: document.getElementById('successCount'),
+        failedCount: document.getElementById('failedCount'),
+        failureList: document.getElementById('failureList'),
+        openOutputBtn: document.getElementById('openOutputBtn'),
+        outputPath: document.getElementById('outputPath'),
+        copyOutputBtn: document.getElementById('copyOutputBtn'),
+        savedReportList: document.getElementById('savedReportList'),
+        sampleModal: document.getElementById('sampleModal'),
+        sampleJson: document.getElementById('sampleJson'),
+        closeSampleBtn: document.getElementById('closeSampleBtn')
+      };
+
+      const numberFormatter = new Intl.NumberFormat('en-US');
+
+      function formatNumber(value) {
+        return numberFormatter.format(value);
+      }
+
+      function baseName(filePath) {
+        return String(filePath || '').split(/[\\/]/).filter(Boolean).pop() || String(filePath || '');
+      }
+
+      function itemLabel(item) {
+        const name = item.name || 'Untitled';
+        return item.folder ? item.folder + '/' + name : name;
+      }
+
+      function relativePath(filePath, base) {
+        const text = String(filePath || '');
+        if (!base) return text;
+
+        const prefix = base.endsWith('/') || base.endsWith('\\') ? base : base + '/';
+        if (text.startsWith(prefix)) return text.slice(prefix.length);
+
+        const altPrefix = base + '\\';
+        if (text.startsWith(altPrefix)) return text.slice(base.length + 1);
+
+        return baseName(text);
+      }
+
+      function addLog(level, message) {
+        const line = document.createElement('div');
+        line.className = 'log-line';
+
+        const time = document.createElement('span');
+        time.className = 'log-time';
+        time.textContent = new Date().toLocaleTimeString('en-US', {
+          hour: '2-digit',
+          minute: '2-digit',
+          second: '2-digit',
+          hour12: false
+        });
+
+        const text = document.createElement('span');
+        text.className = 'log-message';
+        text.dataset.level = level;
+        text.textContent = message;
+
+        line.append(time, text);
+        elements.logView.append(line);
+        elements.logView.scrollTop = elements.logView.scrollHeight;
+      }
+
+      function setProgress(completed, total) {
+        const done = Number.isFinite(completed) ? completed : 0;
+        const count = Number.isFinite(total) ? total : 0;
+        const percent = count > 0 ? Math.min(100, Math.round((done / count) * 100)) : 0;
+
+        elements.progressBar.style.width = percent + '%';
+        elements.progressText.textContent = formatNumber(done) + ' of ' + formatNumber(count);
+        elements.progressTrack.setAttribute('aria-valuemax', String(count));
+        elements.progressTrack.setAttribute('aria-valuenow', String(done));
+        elements.progressTrack.setAttribute(
+          'aria-valuetext',
+          formatNumber(done) + ' of ' + formatNumber(count)
+        );
+      }
+
+      function setQuality(quality) {
+        state.quality = quality === 'high' ? 'high' : 'normal';
+
+        elements.qualityHint.textContent =
+          state.quality === 'high'
+            ? '4x output — sharper, larger files, a bit slower.'
+            : '2x output — faster.';
+      }
+
+      function qualityLabel() {
+        return state.quality === 'high' ? 'High (4x)' : 'Normal (2x)';
+      }
+
+      function updateControls() {
+        const busy = state.running || state.generating;
+        const hasItems = state.items.length > 0;
+
+        elements.loginBtn.disabled = state.running;
+        elements.importBtn.disabled = state.running;
+        elements.chooseLinksBtn.disabled = busy;
+        elements.saveLinksBtn.disabled = busy || !hasItems;
+        elements.chooseOutputBtn.disabled = busy;
+        elements.qualityInputs.forEach((input) => {
+          input.disabled = busy;
+        });
+        elements.qualityGroup.dataset.disabled = busy ? 'true' : 'false';
+        elements.projectUrl.disabled = busy;
+        elements.generateBtn.disabled = busy;
+        elements.startBtn.disabled = busy || !hasItems || !state.outputDir;
+        elements.stopBtn.disabled = !state.running || state.stopping;
+        elements.openOutputBtn.disabled = !state.outputDir;
+        elements.copyOutputBtn.disabled = !state.outputDir;
+
+        if (state.generating) {
+          elements.startHint.textContent = 'Generating links.json…';
+        } else if (state.running) {
+          elements.startHint.textContent = state.stopping ? 'Stopping…' : 'Running…';
+        } else if (!hasItems) {
+          elements.startHint.textContent = 'Choose a links.json file first.';
+        } else if (!state.outputDir) {
+          elements.startHint.textContent = 'Choose an output folder.';
+        } else {
+          const invalidCount = state.items.filter((item) => !item.valid).length;
+          elements.startHint.textContent = invalidCount
+            ? formatNumber(invalidCount) + ' invalid item(s) will be skipped.'
+            : formatNumber(state.items.length) + ' item(s) ready.';
+        }
+      }
+
+      function renderSession(loggedIn) {
+        const element = elements.sessionStatus;
+        const previous = state.session;
+
+        if (loggedIn === null) {
+          state.session = null;
+          element.dataset.state = 'unknown';
+          element.textContent = 'Session status unknown';
+          return;
+        }
+
+        state.session = Boolean(loggedIn);
+
+        if (loggedIn) {
+          element.dataset.state = 'in';
+          element.textContent = 'Signed in to Figma';
+          if (previous !== true) addLog('success', 'Figma sign-in detected.');
+        } else {
+          element.dataset.state = 'out';
+          element.textContent = 'Not signed in to Figma';
+          if (previous === true) addLog('error', 'The Figma session expired; sign in again.');
+        }
+      }
+
+      async function refreshSession() {
+        if (elements.sessionStatus.dataset.state !== 'checking') {
+          elements.sessionStatus.dataset.state = 'checking';
+          elements.sessionStatus.textContent = 'Checking Figma session…';
+        }
+
+        try {
+          const result = await api.sessionStatus();
+          renderSession(Boolean(result && result.loggedIn));
+        } catch {
+          renderSession(null);
+        }
+      }
+
+      function renderItems() {
+        elements.itemList.replaceChildren();
+
+        if (!state.items.length) {
+          const empty = document.createElement('li');
+          empty.className = 'empty';
+          empty.textContent = 'No links file selected yet.';
+          elements.itemList.append(empty);
+          return;
+        }
+
+        const fragment = document.createDocumentFragment();
+
+        state.items.forEach((item, index) => {
+          const row = document.createElement('li');
+          row.className = 'item-row';
+          row.dataset.status = item.status || 'waiting';
+
+          const dot = document.createElement('span');
+          dot.className = 'status-dot';
+          dot.setAttribute('aria-hidden', 'true');
+
+          const copy = document.createElement('div');
+          copy.className = 'item-copy';
+
+          const name = document.createElement('span');
+          name.className = 'item-name';
+          name.textContent = item.name || 'Item ' + formatNumber(index + 1);
+
+          const itemPath = document.createElement('span');
+          itemPath.className = 'item-path';
+          itemPath.textContent = item.folder || 'No folder name';
+
+          copy.append(name, itemPath);
+
+          const badge = document.createElement('span');
+          badge.className = 'badge';
+          badge.dataset.status = item.status || 'waiting';
+          badge.textContent = STATUS_LABELS[item.status] || STATUS_LABELS.waiting;
+
+          row.append(dot, copy, badge);
+
+          if (item.error) {
+            const note = document.createElement('p');
+            note.className = 'item-note';
+            note.textContent = item.error;
+            row.append(note);
+          }
+
+          fragment.append(row);
+        });
+
+        elements.itemList.append(fragment);
+
+        const working = elements.itemList.querySelector('[data-status="working"]');
+        if (working) working.scrollIntoView({ block: 'nearest' });
+      }
+
+      function renderSavedReport(savedItems, outputDir) {
+        elements.savedReportList.replaceChildren();
+
+        const groups = Array.isArray(savedItems) ? savedItems : [];
+        const totalFiles = groups.reduce(
+          (sum, group) => sum + (Array.isArray(group.files) ? group.files.length : 0),
+          0
+        );
+
+        if (!totalFiles) {
+          const empty = document.createElement('span');
+          empty.className = 'saved-empty';
+          empty.textContent = 'No files were saved.';
+          elements.savedReportList.append(empty);
+          return;
+        }
+
+        const fragment = document.createDocumentFragment();
+
+        groups.forEach((group) => {
+          const files = Array.isArray(group.files) ? group.files : [];
+          if (!files.length) return;
+
+          const item = document.createElement('div');
+          item.className = 'saved-group';
+
+          const head = document.createElement('div');
+          head.className = 'saved-group-head';
+
+          const name = document.createElement('span');
+          name.className = 'saved-group-name';
+          name.textContent = itemLabel(group);
+
+          const count = document.createElement('span');
+          count.className = 'saved-count';
+          count.textContent = formatNumber(files.length) + ' file' + (files.length === 1 ? '' : 's');
+
+          head.append(name, count);
+
+          const list = document.createElement('ul');
+          list.className = 'saved-files';
+
+          files.forEach((file) => {
+            const line = document.createElement('li');
+            line.className = 'saved-file';
+            line.title = file.path || '';
+
+            const pathText = document.createElement('span');
+            pathText.textContent = relativePath(file.path, outputDir);
+
+            line.append(pathText);
+
+            if (file.label) {
+              const label = document.createElement('span');
+              label.className = 'saved-label';
+              label.textContent = '  ·  ' + file.label;
+              line.append(label);
+            }
+
+            list.append(line);
+          });
+
+          item.append(head, list);
+          fragment.append(item);
+        });
+
+        elements.savedReportList.append(fragment);
+      }
+
+      function renderSummary(summary) {
+        const outputDir = summary.outputDir || state.outputDir || '';
+        state.outputDir = outputDir;
+
+        elements.successCount.textContent = formatNumber(summary.success || 0);
+        elements.failedCount.textContent = formatNumber(summary.failed || 0);
+        elements.failureList.replaceChildren();
+
+        const failures = Array.isArray(summary.failedItems) ? summary.failedItems : [];
+        if (!failures.length) {
+          const empty = document.createElement('li');
+          empty.textContent = summary.stopped
+            ? 'Run stopped; remaining items were not processed.'
+            : 'All items succeeded.';
+          elements.failureList.append(empty);
+        } else {
+          failures.forEach((failure) => {
+            const row = document.createElement('li');
+            const label = document.createElement('span');
+            label.className = 'failure-label';
+            label.textContent = failure.folder || failure.name
+              ? itemLabel(failure)
+              : 'Unknown item';
+            row.append(label, document.createTextNode(' — ' + (failure.reason || 'Error')));
+            elements.failureList.append(row);
+          });
+        }
+
+        elements.outputPath.textContent = outputDir || '—';
+        elements.outputPath.title = outputDir;
+        renderSavedReport(summary.savedItems, outputDir);
+
+        elements.summaryPanel.hidden = false;
+        elements.summaryPanel.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+      }
+
+      function handleEvent(event) {
+        if (!event || typeof event !== 'object') return;
+
+        if (event.type === 'session') {
+          renderSession(Boolean(event.loggedIn));
+          return;
+        }
+
+        if (event.type === 'log') {
+          addLog(event.level || 'info', String(event.message || ''));
+          return;
+        }
+
+        if (event.type === 'item') {
+          const item = state.items[event.index];
+          if (!item) return;
+          item.status = event.status || 'waiting';
+          item.error = event.error || '';
+          renderItems();
+          return;
+        }
+
+        if (event.type === 'progress') {
+          setProgress(event.completed, event.total);
+          return;
+        }
+
+        if (event.type === 'summary') {
+          state.running = false;
+          state.stopping = false;
+
+          if (!event.stopped) {
+            setProgress(state.items.length, state.items.length);
+          }
+
+          renderSummary(event);
+          updateControls();
+          addLog(
+            event.stopped ? 'info' : event.failed ? 'error' : 'success',
+            (event.stopped ? 'Stopped — ' : 'Finished: ') +
+              formatNumber(event.success || 0) + ' succeeded, ' +
+              formatNumber(event.failed || 0) + ' failed.'
+          );
+        }
+      }
+
+      function loadItems(items, sourceLabel) {
+        state.items = items.map((item) => ({
+          ...item,
+          status: 'waiting',
+          error: ''
+        }));
+
+        elements.linksMeta.textContent =
+          sourceLabel + ' · ' + formatNumber(state.items.length) +
+          (state.items.length === 1 ? ' item' : ' items');
+        elements.linksMeta.title = sourceLabel;
+        elements.summaryPanel.hidden = true;
+        setProgress(0, state.items.length);
+        renderItems();
+        updateControls();
+      }
+
+      async function chooseLinks() {
+        try {
+          const result = await api.chooseLinks();
+          if (!result || result.canceled) return;
+
+          if (result.error) {
+            addLog('error', result.error);
+            return;
+          }
+
+          loadItems(result.items, baseName(result.path));
+
+          const invalidCount = state.items.filter((item) => !item.valid).length;
+          addLog(
+            invalidCount ? 'error' : 'info',
+            'Loaded links.json: ' + formatNumber(state.items.length) + ' item(s)' +
+              (invalidCount ? ' (' + formatNumber(invalidCount) + ' invalid)' : '') + '.'
+          );
+        } catch {
+          addLog('error', 'Could not read the links file.');
+        }
+      }
+
+      async function saveLinks() {
+        if (state.running || state.generating || !state.items.length) return;
+
+        try {
+          const result = await api.saveLinks({
+            items: state.items.map((item) => ({
+              folder: item.folder,
+              name: item.name,
+              nodeId: item.nodeId,
+              url: item.url
+            }))
+          });
+
+          if (!result || result.canceled) return;
+
+          if (!result.ok) {
+            addLog('error', (result && result.error) || 'Could not save links.json.');
+            return;
+          }
+
+          addLog('success', 'Saved links.json to ' + result.path);
+        } catch {
+          addLog('error', 'Could not save links.json.');
+        }
+      }
+
+      async function generateLinks() {
+        if (state.running || state.generating) return;
+
+        const url = elements.projectUrl.value.trim();
+
+        if (!url) {
+          elements.generateHint.textContent = 'Enter a Figma project link first.';
+          addLog('error', 'Enter a Figma project link first.');
+          return;
+        }
+
+        state.generating = true;
+        elements.generateHint.textContent = 'Reading pages and frames from Figma…';
+        updateControls();
+        addLog('info', 'Reading pages and frames from ' + url + '…');
+
+        try {
+          const result = await api.generateLinks(url);
+
+          if (!result || !result.ok) {
+            elements.generateHint.textContent = (result && result.error) || 'Could not generate links.json.';
+            addLog('error', (result && result.error) || 'Could not generate links.json.');
+            return;
+          }
+
+          const items = Array.isArray(result.items) ? result.items : [];
+          const label = result.path ? baseName(result.path) : 'Generated links';
+
+          loadItems(items, label);
+
+          if (result.canceled || !result.path) {
+            elements.generateHint.textContent =
+              'Generated ' + formatNumber(items.length) + ' link(s), but the file was not saved.';
+            addLog(
+              'info',
+              'Generated ' + formatNumber(items.length) + ' link(s); the save dialog was canceled.'
+            );
+          } else {
+            elements.generateHint.textContent =
+              'Saved ' + formatNumber(items.length) + ' link(s) to ' + result.path;
+            addLog(
+              'success',
+              'Generated and saved ' + formatNumber(items.length) +
+                ' frame link(s) from ' + formatNumber(result.pages || 0) + ' page(s).'
+            );
+            addLog('success', 'Saved links.json to ' + result.path);
+          }
+        } catch {
+          elements.generateHint.textContent = 'Could not generate links.json.';
+          addLog('error', 'Could not generate links.json.');
+        } finally {
+          state.generating = false;
+          updateControls();
+        }
+      }
+
+      async function chooseOutput() {
+        try {
+          const result = await api.chooseOutput();
+          if (!result || result.canceled) return;
+
+          state.outputDir = result.path;
+          elements.outputMeta.textContent = result.path;
+          elements.outputMeta.title = result.path;
+          elements.outputPath.textContent = result.path;
+          elements.outputPath.title = result.path;
+          elements.summaryPanel.hidden = true;
+          updateControls();
+        } catch {
+          addLog('error', 'Could not choose the output folder.');
+        }
+      }
+
+      async function copyOutputPath() {
+        const text = state.outputDir || elements.outputPath.textContent;
+
+        if (!text || text === '—') {
+          addLog('error', 'There is no output path to copy yet.');
+          return;
+        }
+
+        try {
+          if (navigator.clipboard && navigator.clipboard.writeText) {
+            await navigator.clipboard.writeText(text);
+          } else {
+            const result = await api.copyText(text);
+            if (!result || !result.ok) throw new Error('copy failed');
+          }
+
+          addLog('success', 'Output folder path copied.');
+        } catch {
+          addLog('error', 'Could not copy the output folder path.');
+        }
+      }
+
+      async function startBatch() {
+        if (state.running || state.generating || !state.items.length || !state.outputDir) return;
+
+        state.running = true;
+        state.stopping = false;
+        state.items = state.items.map((item) => ({ ...item, status: 'waiting', error: '' }));
+        elements.summaryPanel.hidden = true;
+        elements.outputPath.textContent = state.outputDir;
+        elements.outputPath.title = state.outputDir;
+        setProgress(0, state.items.length);
+        renderItems();
+        updateControls();
+        addLog(
+          'info',
+          'Starting ' + formatNumber(state.items.length) + ' item(s) — ' +
+            qualityLabel() + ' quality…'
+        );
+
+        try {
+          const result = await api.start({
+            outputDir: state.outputDir,
+            quality: state.quality,
+            items: state.items.map((item) => ({
+              folder: item.folder,
+              name: item.name,
+              nodeId: item.nodeId,
+              url: item.url
+            }))
+          });
+
+          if (!result || !result.ok) {
+            state.running = false;
+            state.stopping = false;
+            addLog('error', (result && result.error) || 'Could not start the run.');
+            updateControls();
+          }
+        } catch {
+          state.running = false;
+          state.stopping = false;
+          addLog('error', 'Could not start the run.');
+          updateControls();
+        }
+      }
+
+      async function stopBatch() {
+        if (!state.running || state.stopping) return;
+
+        state.stopping = true;
+        updateControls();
+        addLog('info', 'Stopping the run…');
+
+        try {
+          const result = await api.stop();
+          if (!result || !result.ok) {
+            state.stopping = false;
+            updateControls();
+            addLog('error', (result && result.error) || 'Could not stop the run.');
+          }
+        } catch {
+          state.stopping = false;
+          updateControls();
+          addLog('error', 'Could not stop the run.');
+        }
+      }
+
+      async function openOutput() {
+        if (!state.outputDir) return;
+
+        try {
+          const result = await api.openOutput(state.outputDir);
+          if (!result || !result.ok) {
+            addLog('error', (result && result.error) || 'Could not open the output folder.');
+          }
+        } catch {
+          addLog('error', 'Could not open the output folder.');
+        }
+      }
+
+      async function openLogin() {
+        try {
+          const result = await api.login();
+          if (!result || !result.ok) {
+            addLog('error', 'Could not open the Figma sign-in window.');
+            return;
+          }
+          addLog('info', 'Figma sign-in window opened. The status updates automatically after you sign in.');
+        } catch {
+          addLog('error', 'Could not open the Figma sign-in window.');
+        }
+      }
+
+      async function importFirefoxSession() {
+        if (state.running) return;
+
+        elements.importBtn.disabled = true;
+        addLog('info', 'Reading the Figma session from Firefox…');
+
+        try {
+          const result = await api.importFirefox();
+
+          if (!result || !result.ok) {
+            addLog('error', (result && result.error) || 'Could not import the Firefox session.');
+            return;
+          }
+
+          addLog('success', 'Firefox session imported (' + formatNumber(result.imported) + ' cookies).');
+          renderSession(Boolean(result.loggedIn));
+        } catch {
+          addLog('error', 'Could not import the Firefox session.');
+        } finally {
+          elements.importBtn.disabled = state.running;
+        }
+      }
+
+      function openSampleModal() {
+        elements.sampleJson.textContent = JSON.stringify(SAMPLE_LINKS, null, 2);
+        elements.sampleModal.hidden = false;
+        elements.closeSampleBtn.focus();
+      }
+
+      function closeSampleModal() {
+        elements.sampleModal.hidden = true;
+        elements.sampleJsonBtn.focus();
+      }
+
+      if (!api) {
+        addLog('error', 'The app bridge is not available.');
+        elements.loginBtn.disabled = true;
+        elements.importBtn.disabled = true;
+        elements.sessionStatus.disabled = true;
+        elements.chooseLinksBtn.disabled = true;
+        elements.sampleJsonBtn.disabled = true;
+        elements.saveLinksBtn.disabled = true;
+        elements.chooseOutputBtn.disabled = true;
+        elements.generateBtn.disabled = true;
+        elements.qualityInputs.forEach((input) => {
+          input.disabled = true;
+        });
+        elements.startBtn.disabled = true;
+        elements.stopBtn.disabled = true;
+        return;
+      }
+
+      api.onEvent(handleEvent);
+      elements.loginBtn.addEventListener('click', openLogin);
+      elements.importBtn.addEventListener('click', importFirefoxSession);
+      elements.sessionStatus.addEventListener('click', refreshSession);
+      elements.chooseLinksBtn.addEventListener('click', chooseLinks);
+      elements.sampleJsonBtn.addEventListener('click', openSampleModal);
+      elements.closeSampleBtn.addEventListener('click', closeSampleModal);
+      elements.sampleModal.addEventListener('click', (event) => {
+        if (event.target === elements.sampleModal) closeSampleModal();
+      });
+      document.addEventListener('keydown', (event) => {
+        if (event.key === 'Escape' && !elements.sampleModal.hidden) closeSampleModal();
+      });
+      elements.saveLinksBtn.addEventListener('click', saveLinks);
+      elements.chooseOutputBtn.addEventListener('click', chooseOutput);
+      elements.copyOutputBtn.addEventListener('click', copyOutputPath);
+      elements.generateBtn.addEventListener('click', generateLinks);
+      elements.projectUrl.addEventListener('keydown', (event) => {
+        if (event.key === 'Enter') {
+          event.preventDefault();
+          generateLinks();
+        }
+      });
+      elements.qualityInputs.forEach((input) => {
+        input.addEventListener('change', () => {
+          if (input.checked) setQuality(input.value);
+        });
+      });
+      elements.startBtn.addEventListener('click', startBatch);
+      elements.stopBtn.addEventListener('click', stopBatch);
+      elements.openOutputBtn.addEventListener('click', openOutput);
+
+      refreshSession();
+      setQuality(state.quality);
+      setProgress(0, 0);
+      renderItems();
+      updateControls();
+      addLog('info', 'Ready.');
+    })();
+  </script>
+</body>
+</html>
