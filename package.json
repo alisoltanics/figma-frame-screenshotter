@@ -3,6 +3,8 @@
   "version": "1.0.0",
   "private": true,
   "description": "Capture Figma frames as PNG files",
+  "author": "Figma Frame Screenshotter",
+  "desktopName": "figma-frame-screenshotter.desktop",
   "main": "main.js",
   "scripts": {
     "start": "electron .",

@@ -25,6 +25,7 @@ linux:
   category: Graphics
   icon: assets/icon.png
   executableName: figma-frame-screenshotter
+  syncDesktopName: true
   maintainer: Figma Frame Screenshotter <noreply@example.com>
   synopsis: Capture Figma frames as PNG files
   description: Capture Figma frames as PNG files, including long frames split into tiles.
