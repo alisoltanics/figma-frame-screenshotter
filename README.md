@@ -33,10 +33,24 @@ written to disk by the app.
 ## Capture a batch
 
 1. Choose a `links.json` file.
-2. Choose an output folder.
+2. Choose an output folder, or keep the default.
 3. Pick a quality mode.
 4. Click **Start**. Click **Stop** at any time to stop promptly; files that were
    not fully captured are not written.
+
+### Capture a node directly
+
+Paste a Figma frame or page link into **Capture a node directly** and click
+**Capture node**. No `links.json` file is needed. A frame link captures that
+frame; a page link captures every top-level frame on the page. Direct captures
+are saved under the `captures/` subfolder.
+
+### Output folder
+
+The default output folder is `~/Pictures/Figma Screenshots` (the Pictures
+folder reported by the operating system). If no output folder has been chosen,
+captures are saved there. Use **Choose output folder** to pick another folder
+and **Use default** to switch back.
 
 ### Quality modes
 
@@ -173,7 +187,7 @@ figma-shot capture --links <links.json> --out <dir> [options]
 | --- | --- |
 | `--url <url>` | Figma frame or page URL. Repeat the flag for several URLs. |
 | `--links <file>` | Read entries from a `links.json` file. |
-| `--out <dir>` | Output folder (required). |
+| `--out <dir>` | Output folder (default: `~/Pictures/Figma Screenshots`). |
 | `--quality <mode>` | `normal` (2x, default) or `high` (4x). |
 | `--folder <name>` | Output subfolder for `--url` entries (default `captures`). |
 | `--name <name>` | File name for a single `--url` entry. |

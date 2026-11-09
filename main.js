@@ -549,6 +549,14 @@ function safeErrorMessage(error) {
   return 'An unexpected error occurred.';
 }
 
+function getDefaultOutputDir() {
+  try {
+    return path.join(app.getPath('pictures'), 'Figma Screenshots');
+  } catch {
+    return path.join(app.getPath('home'), 'Pictures', 'Figma Screenshots');
+  }
+}
+
 async function readPageState(webContents) {
   try {
     return await webContents.executeJavaScript(PAGE_STATE_SCRIPT, true);
@@ -1421,6 +1429,20 @@ async function executeBatch(items, outputRoot, summary, quality) {
   return false;
 }
 
+function urlWithoutShareToken(value) {
+  try {
+    const parsed = new URL(String(value || ''));
+    if (parsed.searchParams.has('t')) {
+      parsed.searchParams.delete('t');
+      return parsed.toString();
+    }
+  } catch {
+    // Keep malformed or non-URL values unchanged; normalizeItem reports them.
+  }
+
+  return value;
+}
+
 function safePathPart(value, fallback = 'item') {
   let text = String(value || '')
     .replace(/[\u0000-\u001f\u007f]/g, ' ')
@@ -1823,7 +1845,12 @@ function registerIpcHandlers() {
     if (save.canceled || !save.filePath) return { canceled: true };
 
     try {
-      await fs.writeFile(save.filePath, JSON.stringify(payload.items, null, 2) + '\n', 'utf8');
+      const safeItems = payload.items.map((entry) => ({
+        ...entry,
+        url: urlWithoutShareToken(entry && entry.url)
+      }));
+
+      await fs.writeFile(save.filePath, JSON.stringify(safeItems, null, 2) + '\n', 'utf8');
       return { ok: true, path: save.filePath };
     } catch {
       return { ok: false, error: 'Could not write the JSON file.' };
@@ -1850,6 +1877,17 @@ function registerIpcHandlers() {
     return { path: result.filePaths[0] };
   });
 
+  ipcMain.handle('output:default', async () => {
+    const directory = getDefaultOutputDir();
+
+    try {
+      await fs.mkdir(directory, { recursive: true });
+      return { ok: true, path: directory };
+    } catch {
+      return { ok: false, error: 'Could not create the default output folder.' };
+    }
+  });
+
   ipcMain.handle('capture:start', async (_event, payload) => {
     if (batchRunning || projectGenerating) {
       return { ok: false, error: 'Another task is already running.' };
@@ -1859,12 +1897,17 @@ function registerIpcHandlers() {
       return { ok: false, error: 'links.json has no items to process.' };
     }
 
-    if (typeof payload.outputDir !== 'string' || !path.isAbsolute(payload.outputDir)) {
+    const requestedOutput =
+      typeof payload.outputDir === 'string' ? payload.outputDir.trim() : '';
+    const outputDir = requestedOutput || getDefaultOutputDir();
+
+    if (!path.isAbsolute(outputDir)) {
       return { ok: false, error: 'Choose an output folder first.' };
     }
 
     try {
-      const stat = await fs.stat(payload.outputDir);
+      await fs.mkdir(outputDir, { recursive: true });
+      const stat = await fs.stat(outputDir);
       if (!stat.isDirectory()) {
         return { ok: false, error: 'The selected path is not a folder.' };
       }
@@ -1894,7 +1937,7 @@ function registerIpcHandlers() {
             : 'Output quality: Normal (2x).',
           'info'
         );
-        summary.stopped = await executeBatch(items, payload.outputDir, summary, quality);
+        summary.stopped = await executeBatch(items, outputDir, summary, quality);
       } catch {
         log('The batch stopped unexpectedly.', 'error');
       } finally {
@@ -1914,7 +1957,7 @@ function registerIpcHandlers() {
         failed: summary.failedItems.length,
         failedItems: summary.failedItems,
         savedItems: summary.savedItems,
-        outputDir: payload.outputDir,
+        outputDir,
         stopped: summary.stopped
       });
     });
@@ -1954,6 +1997,7 @@ module.exports = {
   ensureDownloadHandler,
   safePathPart,
   safeErrorMessage,
+  getDefaultOutputDir,
   setLogSink,
   requestStop
 };

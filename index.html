@@ -215,6 +215,13 @@
       font-size: 12px;
     }
 
+    #useDefaultOutputBtn { flex: 0 0 auto; }
+
+    .output-hint {
+      overflow-wrap: anywhere;
+      text-align: left;
+    }
+
     .hero-actions {
       display: flex;
       flex: 0 0 auto;
@@ -870,9 +877,13 @@
         <div class="picker">
           <div class="field-head">
             <h2>Output folder</h2>
-            <span id="outputMeta" class="meta" title="">Not selected</span>
+            <span id="outputMeta" class="meta" title="">Loading default…</span>
           </div>
-          <button id="chooseOutputBtn" class="button" type="button">Choose output folder</button>
+          <div class="button-row">
+            <button id="chooseOutputBtn" class="button" type="button">Choose output folder</button>
+            <button id="useDefaultOutputBtn" class="button ghost small" type="button" disabled>Use default</button>
+          </div>
+          <span id="outputHint" class="hint output-hint">Preparing the default folder…</span>
         </div>
 
         <div class="picker quality-picker">
@@ -898,6 +909,26 @@
           <button id="stopBtn" class="button danger" type="button" disabled>Stop</button>
           <span id="startHint" class="hint">Choose a links file and an output folder first.</span>
         </div>
+      </section>
+
+      <section class="panel generate-panel" aria-labelledby="quickTitle">
+        <div class="generate-head">
+          <h2 id="quickTitle">Capture a node directly</h2>
+          <p>Paste a Figma frame or page link; no links.json needed.</p>
+        </div>
+        <div class="generate-field">
+          <label class="meta" for="nodeUrl">Figma node link</label>
+          <input
+            id="nodeUrl"
+            class="input"
+            type="url"
+            spellcheck="false"
+            autocomplete="off"
+            placeholder="https://www.figma.com/design/AbCdEf123456/Example-Project?node-id=1-2"
+          >
+        </div>
+        <button id="captureNodeBtn" class="button primary" type="button">Capture node</button>
+        <span id="quickHint" class="generate-hint">Uses the output folder above; if none is chosen, the default folder is used.</span>
       </section>
 
       <section class="panel generate-panel" aria-labelledby="generateTitle">
@@ -1033,6 +1064,9 @@
       const state = {
         items: [],
         outputDir: '',
+        defaultOutputDir: '',
+        usingDefaultOutput: false,
+        quickCapture: false,
         quality: 'normal',
         running: false,
         stopping: false,
@@ -1048,6 +1082,8 @@
         sampleJsonBtn: document.getElementById('sampleJsonBtn'),
         saveLinksBtn: document.getElementById('saveLinksBtn'),
         chooseOutputBtn: document.getElementById('chooseOutputBtn'),
+        useDefaultOutputBtn: document.getElementById('useDefaultOutputBtn'),
+        outputHint: document.getElementById('outputHint'),
         qualityGroup: document.getElementById('qualityGroup'),
         qualityHint: document.getElementById('qualityHint'),
         qualityInputs: Array.from(document.querySelectorAll('input[name="quality"]')),
@@ -1056,6 +1092,9 @@
         startHint: document.getElementById('startHint'),
         linksMeta: document.getElementById('linksMeta'),
         outputMeta: document.getElementById('outputMeta'),
+        nodeUrl: document.getElementById('nodeUrl'),
+        captureNodeBtn: document.getElementById('captureNodeBtn'),
+        quickHint: document.getElementById('quickHint'),
         projectUrl: document.getElementById('projectUrl'),
         generateBtn: document.getElementById('generateBtn'),
         generateHint: document.getElementById('generateHint'),
@@ -1156,6 +1195,23 @@
         return state.quality === 'high' ? 'High (4x)' : 'Normal (2x)';
       }
 
+      function renderOutput() {
+        const current = state.outputDir || '';
+
+        if (state.usingDefaultOutput && current) {
+          elements.outputMeta.textContent = 'Default';
+          elements.outputHint.textContent = 'Default folder: ' + current;
+        } else if (current) {
+          elements.outputMeta.textContent = 'Custom';
+          elements.outputHint.textContent = current;
+        } else {
+          elements.outputMeta.textContent = 'Not selected';
+          elements.outputHint.textContent = 'Choose a folder or use the default.';
+        }
+
+        elements.outputMeta.title = current || state.defaultOutputDir || '';
+      }
+
       function updateControls() {
         const busy = state.running || state.generating;
         const hasItems = state.items.length > 0;
@@ -1165,10 +1221,14 @@
         elements.chooseLinksBtn.disabled = busy;
         elements.saveLinksBtn.disabled = busy || !hasItems;
         elements.chooseOutputBtn.disabled = busy;
+        elements.useDefaultOutputBtn.disabled =
+          busy || !state.defaultOutputDir || state.usingDefaultOutput;
         elements.qualityInputs.forEach((input) => {
           input.disabled = busy;
         });
         elements.qualityGroup.dataset.disabled = busy ? 'true' : 'false';
+        elements.nodeUrl.disabled = busy;
+        elements.captureNodeBtn.disabled = busy || !state.outputDir;
         elements.projectUrl.disabled = busy;
         elements.generateBtn.disabled = busy;
         elements.startBtn.disabled = busy || !hasItems || !state.outputDir;
@@ -1181,7 +1241,8 @@
         } else if (state.running) {
           elements.startHint.textContent = state.stopping ? 'Stopping…' : 'Running…';
         } else if (!hasItems) {
-          elements.startHint.textContent = 'Choose a links.json file first.';
+          elements.startHint.textContent =
+            'Choose a links.json file or paste a node link.';
         } else if (!state.outputDir) {
           elements.startHint.textContent = 'Choose an output folder.';
         } else {
@@ -1236,7 +1297,7 @@
         if (!state.items.length) {
           const empty = document.createElement('li');
           empty.className = 'empty';
-          empty.textContent = 'No links file selected yet.';
+          empty.textContent = 'No links yet — choose links.json or paste a node link.';
           elements.itemList.append(empty);
           return;
         }
@@ -1360,6 +1421,10 @@
       function renderSummary(summary) {
         const outputDir = summary.outputDir || state.outputDir || '';
         state.outputDir = outputDir;
+        state.usingDefaultOutput = Boolean(
+          state.defaultOutputDir && outputDir === state.defaultOutputDir
+        );
+        renderOutput();
 
         elements.successCount.textContent = formatNumber(summary.success || 0);
         elements.failedCount.textContent = formatNumber(summary.failed || 0);
@@ -1426,6 +1491,15 @@
 
           if (!event.stopped) {
             setProgress(state.items.length, state.items.length);
+          }
+
+          if (state.quickCapture) {
+            state.quickCapture = false;
+            elements.quickHint.textContent = event.stopped
+              ? 'Capture stopped; no partial file was written.'
+              : event.failed
+                ? 'Capture failed. See the log for details.'
+                : 'Capture finished. The file is in the output folder.';
           }
 
           renderSummary(event);
@@ -1561,21 +1635,140 @@
         }
       }
 
+      async function loadDefaultOutput() {
+        try {
+          const result = await api.defaultOutput();
+
+          if (!result || !result.ok) {
+            elements.outputMeta.textContent = 'Not selected';
+            elements.outputHint.textContent =
+              (result && result.error) || 'Could not prepare the default output folder.';
+            addLog('error', (result && result.error) || 'Could not prepare the default output folder.');
+            return;
+          }
+
+          state.defaultOutputDir = result.path;
+
+          if (!state.outputDir) {
+            state.outputDir = result.path;
+            state.usingDefaultOutput = true;
+          }
+
+          renderOutput();
+        } catch {
+          elements.outputMeta.textContent = 'Not selected';
+          elements.outputHint.textContent = 'Could not prepare the default output folder.';
+          addLog('error', 'Could not prepare the default output folder.');
+        } finally {
+          updateControls();
+        }
+      }
+
+      function safeItemName(value, fallback) {
+        let text = String(value || '')
+          .replace(/[\\/:*?"<>|]+/g, '-')
+          .replace(/\s+/g, ' ')
+          .trim();
+
+        text = text.replace(/^[.\s]+|[.\s]+$/g, '');
+        return (text || fallback).slice(0, 120);
+      }
+
+      function itemFromNodeUrl(rawUrl) {
+        let parsed;
+
+        try {
+          parsed = new URL(rawUrl);
+        } catch {
+          throw new Error('Enter a valid Figma link.');
+        }
+
+        if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') {
+          throw new Error('Enter a valid Figma link.');
+        }
+
+        if (!/(^|\.)figma\.com$/i.test(parsed.hostname)) {
+          throw new Error('Only figma.com links are supported.');
+        }
+
+        const nodeId = (parsed.searchParams.get('node-id') || '').trim();
+        const firstNode = nodeId.split(',')[0].trim().replace(/:/g, '-');
+        const segments = parsed.pathname.split('/').filter(Boolean);
+        const fallback = segments[segments.length - 1] || 'capture';
+        const name = safeItemName(
+          firstNode ? 'node-' + firstNode : 'page-' + fallback,
+          'capture'
+        );
+
+        return {
+          folder: 'captures',
+          name,
+          nodeId,
+          url: parsed.href,
+          valid: true,
+          reason: ''
+        };
+      }
+
+      async function captureNode() {
+        if (state.running || state.generating) return;
+
+        const rawUrl = elements.nodeUrl.value.trim();
+
+        if (!rawUrl) {
+          elements.quickHint.textContent = 'Paste a Figma node link first.';
+          addLog('error', 'Paste a Figma node link first.');
+          return;
+        }
+
+        let item;
+
+        try {
+          item = itemFromNodeUrl(rawUrl);
+        } catch (error) {
+          elements.quickHint.textContent = error.message;
+          addLog('error', error.message);
+          return;
+        }
+
+        state.quickCapture = true;
+        loadItems([item], 'Direct node');
+        elements.quickHint.textContent = 'Capturing ' + itemLabel(item) + '…';
+
+        const started = await startBatch();
+
+        if (!started) {
+          state.quickCapture = false;
+          elements.quickHint.textContent = 'Could not start the capture. See the log for details.';
+        }
+      }
+
       async function chooseOutput() {
         try {
           const result = await api.chooseOutput();
           if (!result || result.canceled) return;
 
           state.outputDir = result.path;
-          elements.outputMeta.textContent = result.path;
-          elements.outputMeta.title = result.path;
+          state.usingDefaultOutput = false;
           elements.outputPath.textContent = result.path;
           elements.outputPath.title = result.path;
           elements.summaryPanel.hidden = true;
+          renderOutput();
           updateControls();
         } catch {
           addLog('error', 'Could not choose the output folder.');
         }
+      }
+
+      function useDefaultOutput() {
+        if (!state.defaultOutputDir || state.running || state.generating) return;
+
+        state.outputDir = state.defaultOutputDir;
+        state.usingDefaultOutput = true;
+        elements.summaryPanel.hidden = true;
+        renderOutput();
+        updateControls();
+        addLog('info', 'Using the default output folder.');
       }
 
       async function copyOutputPath() {
@@ -1601,7 +1794,9 @@
       }
 
       async function startBatch() {
-        if (state.running || state.generating || !state.items.length || !state.outputDir) return;
+        if (state.running || state.generating || !state.items.length || !state.outputDir) {
+          return false;
+        }
 
         state.running = true;
         state.stopping = false;
@@ -1635,12 +1830,16 @@
             state.stopping = false;
             addLog('error', (result && result.error) || 'Could not start the run.');
             updateControls();
+            return false;
           }
+
+          return true;
         } catch {
           state.running = false;
           state.stopping = false;
           addLog('error', 'Could not start the run.');
           updateControls();
+          return false;
         }
       }
 
@@ -1734,6 +1933,9 @@
         elements.sampleJsonBtn.disabled = true;
         elements.saveLinksBtn.disabled = true;
         elements.chooseOutputBtn.disabled = true;
+        elements.useDefaultOutputBtn.disabled = true;
+        elements.captureNodeBtn.disabled = true;
+        elements.nodeUrl.disabled = true;
         elements.generateBtn.disabled = true;
         elements.qualityInputs.forEach((input) => {
           input.disabled = true;
@@ -1758,6 +1960,14 @@
       });
       elements.saveLinksBtn.addEventListener('click', saveLinks);
       elements.chooseOutputBtn.addEventListener('click', chooseOutput);
+      elements.useDefaultOutputBtn.addEventListener('click', useDefaultOutput);
+      elements.captureNodeBtn.addEventListener('click', captureNode);
+      elements.nodeUrl.addEventListener('keydown', (event) => {
+        if (event.key === 'Enter') {
+          event.preventDefault();
+          captureNode();
+        }
+      });
       elements.copyOutputBtn.addEventListener('click', copyOutputPath);
       elements.generateBtn.addEventListener('click', generateLinks);
       elements.projectUrl.addEventListener('keydown', (event) => {
@@ -1776,6 +1986,7 @@
       elements.openOutputBtn.addEventListener('click', openOutput);
 
       refreshSession();
+      loadDefaultOutput();
       setQuality(state.quality);
       setProgress(0, 0);
       renderItems();

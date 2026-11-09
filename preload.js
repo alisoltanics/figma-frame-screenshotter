@@ -11,6 +11,7 @@ contextBridge.exposeInMainWorld('figmaScreenshots', {
   saveLinks: (payload) => ipcRenderer.invoke('links:save', payload),
   copyText: (text) => ipcRenderer.invoke('clipboard:write', text),
   chooseOutput: () => ipcRenderer.invoke('output:choose'),
+  defaultOutput: () => ipcRenderer.invoke('output:default'),
   start: (payload) => ipcRenderer.invoke('capture:start', payload),
   stop: () => ipcRenderer.invoke('capture:stop'),
   openOutput: (directory) => ipcRenderer.invoke('output:open', directory),

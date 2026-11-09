@@ -53,7 +53,7 @@ Usage:
 Capture options:
   --url <url>             Figma frame/page URL. Repeat for several URLs.
   --links <file>          Read items from a links.json file.
-  --out <dir>             Output folder (required).
+  --out <dir>             Output folder (default: Pictures/Figma Screenshots).
   --quality <mode>        normal (2x, default) or high (4x).
   --folder <name>         Output subfolder for --url items (default: captures).
   --name <name>           File name for a single --url item.
@@ -384,10 +384,6 @@ async function ensureSignedIn(options) {
 }
 
 async function runCapture(options, state) {
-  if (!options.out) {
-    throw new CliError('capture requires --out <dir>.', 'USAGE');
-  }
-
   if (options.links && options.urls.length) {
     throw new CliError('Use either --links or --url, not both.', 'USAGE');
   }
@@ -404,7 +400,9 @@ async function runCapture(options, state) {
     throw new CliError('There are no items to capture.', 'NO_ITEMS');
   }
 
-  const outputDir = resolvePath(options.out);
+  const outputDir = options.out
+    ? resolvePath(options.out)
+    : core.getDefaultOutputDir();
 
   try {
     const stat = await fs.stat(outputDir);
