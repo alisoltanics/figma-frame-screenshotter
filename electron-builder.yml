@@ -11,6 +11,7 @@ files:
   - index.html
   - package.json
   - assets/**
+  - .claude/**
 asar: true
 publish:
   provider: github

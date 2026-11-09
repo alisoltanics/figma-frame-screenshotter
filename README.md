@@ -172,6 +172,7 @@ On Windows use `bin\figma-shot.cmd`. In a git checkout you can also run
 | --- | --- |
 | `capture` | Capture frames or pages from `--url` or `--links`. |
 | `generate` | Read a Figma project/file and write a `links.json` file. |
+| `skill` | Install the AI agent skill, or print it. |
 | `session` | Report whether a Figma session is available. |
 | `import-firefox` | Import the Firefox Figma session. |
 | `sample` | Print a sample `links.json` array. |
@@ -207,6 +208,25 @@ figma-shot generate --project "https://www.figma.com/design/AbCdEf123456/Example
 | `--out <file.json>` | Where to write the file (required). |
 | `--include-items` | Include the generated entries in the JSON result. |
 | `--timeout <seconds>` | Stop after this many seconds. |
+
+### AI agent skill
+
+The repository ships an [agent skill](.claude/skills/figma-shot/SKILL.md) that
+teaches AI tools to use `figma-shot` for screenshots. Claude Code and OpenCode
+discover it automatically when working in this repository.
+
+To make it available in every project, install it into the global skill folders:
+
+```bash
+figma-shot skill --install                 # Claude Code, OpenCode, and .agents
+figma-shot skill --install --target claude # only one agent
+figma-shot skill --local                   # install into the current project
+figma-shot skill --print                   # print the Markdown
+```
+
+The skill checks `figma-shot session`, runs `figma-shot capture` with a
+timeout, reads the JSON result, and reports the saved paths. It also instructs
+the agent never to log or save Figma tokens, cookies, or passwords.
 
 ### General options
 
@@ -290,4 +310,6 @@ secrets.
   Windows.
 - `preload.js` — the small secure bridge exposed to the UI.
 - `index.html` — the interface (HTML/CSS/JS, no framework).
+- `.claude/skills/figma-shot/SKILL.md` — the AI agent skill installed by
+  `figma-shot skill --install`.
 - `install.sh` / `launch.sh` — optional desktop integration helpers.

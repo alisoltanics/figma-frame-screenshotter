@@ -58,3 +58,4 @@ fi
 echo "Installed: $DESKTOP_DIR/$APP_ID.desktop"
 echo "Icon:      $ICON_DIR/512x512/apps/$APP_ID.png"
 echo "CLI:       $BIN_DIR/figma-shot"
+echo "AI skill:  $BIN_DIR/figma-shot skill --install"

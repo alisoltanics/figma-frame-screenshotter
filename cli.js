@@ -12,6 +12,7 @@ process.env.FIGMA_SHOT_CLI = '1';
 
 const { app } = require('electron');
 const fs = require('node:fs/promises');
+const os = require('node:os');
 const path = require('node:path');
 
 const core = require('./main.js');
@@ -46,6 +47,7 @@ Usage:
   figma-shot capture --url <figma-url> --out <dir> [options]
   figma-shot capture --links <links.json> --out <dir> [options]
   figma-shot generate --project <figma-url> --out <file.json> [options]
+  figma-shot skill [--install] [--target <name>] [--local]
   figma-shot session
   figma-shot import-firefox
   figma-shot sample
@@ -65,6 +67,12 @@ Generate options:
   --out <file.json>       Where to write the generated links file (required).
   --include-items         Include the generated items in the JSON output.
 
+Skill options:
+  --install               Install the figma-shot skill for AI agents.
+  --target <name>         claude, opencode, agents, or all (default: all).
+  --local                 With --install, write into the current project.
+  --print                 Print the skill Markdown instead of installing it.
+
 General options:
   --user-data-dir <dir>   Electron profile to use (same profile as the app by default).
   --pretty                Pretty-print JSON output.
@@ -81,6 +89,8 @@ Examples:
 
   figma-shot generate --project "https://www.figma.com/design/KEY/File" \\
     --out ./links.json
+
+  figma-shot skill --install
 `;
 
 class CliError extends Error {
@@ -105,6 +115,10 @@ function defaultOptions() {
     userDataDir: '',
     importFirefox: false,
     includeItems: false,
+    skillInstall: false,
+    skillPrint: false,
+    skillTarget: 'all',
+    skillProject: false,
     pretty: false,
     verbose: false,
     quiet: false
@@ -204,6 +218,25 @@ function parseArgv(argv) {
 
       case 'includeItems':
         options.includeItems = true;
+        break;
+
+      case 'install':
+        options.skillInstall = true;
+        break;
+
+      case 'print':
+        options.skillPrint = true;
+        break;
+
+      case 'target': {
+        const taken = takeValue(argv, index, inlineValue, `--${rawKey}`);
+        options.skillTarget = taken.value;
+        index = taken.next;
+        break;
+      }
+
+      case 'local':
+        options.skillProject = true;
         break;
 
       case 'pretty':
@@ -562,6 +595,97 @@ async function runImportFirefox(options) {
   };
 }
 
+const SKILL_ID = 'figma-shot';
+
+function skillSourcePath() {
+  return path.join(__dirname, '.claude', 'skills', SKILL_ID, 'SKILL.md');
+}
+
+function globalSkillTargets() {
+  const home = os.homedir();
+  const configHome = process.env.XDG_CONFIG_HOME || path.join(home, '.config');
+
+  return {
+    claude: path.join(home, '.claude', 'skills', SKILL_ID, 'SKILL.md'),
+    opencode: path.join(configHome, 'opencode', 'skills', SKILL_ID, 'SKILL.md'),
+    agents: path.join(home, '.agents', 'skills', SKILL_ID, 'SKILL.md')
+  };
+}
+
+async function runSkill(options) {
+  const source = skillSourcePath();
+  let content;
+
+  try {
+    content = await fs.readFile(source, 'utf8');
+  } catch {
+    throw new CliError('The bundled skill file is missing.', 'SKILL_MISSING');
+  }
+
+  if (options.skillPrint) {
+    process.stdout.write(content);
+    return { printed: true };
+  }
+
+  const targets = globalSkillTargets();
+
+  if (!options.skillInstall) {
+    return {
+      ok: true,
+      command: 'skill',
+      source,
+      installed: [],
+      targets: Object.keys(targets),
+      hint: 'Run "figma-shot skill --install" to install it for AI agents.'
+    };
+  }
+
+  const targetName = String(options.skillTarget || 'all').toLowerCase();
+  let destinations;
+
+  if (options.skillProject) {
+    destinations = {
+      local: path.join(process.cwd(), '.claude', 'skills', SKILL_ID, 'SKILL.md')
+    };
+  } else if (targetName === 'all') {
+    destinations = targets;
+  } else if (Object.prototype.hasOwnProperty.call(targets, targetName)) {
+    destinations = { [targetName]: targets[targetName] };
+  } else {
+    throw new CliError(
+      `--target must be one of: all, ${Object.keys(targets).join(', ')}.`,
+      'USAGE'
+    );
+  }
+
+  const installed = [];
+
+  for (const [target, destination] of Object.entries(destinations)) {
+    let status = 'created';
+
+    try {
+      const existing = await fs.readFile(destination, 'utf8');
+      status = existing === content ? 'unchanged' : 'updated';
+    } catch {
+      // The destination does not exist yet; write it below.
+    }
+
+    try {
+      await fs.mkdir(path.dirname(destination), { recursive: true });
+      await fs.writeFile(destination, content, 'utf8');
+    } catch {
+      throw new CliError(
+        `Could not write the skill to ${destination}.`,
+        'SKILL_WRITE_FAILED'
+      );
+    }
+
+    installed.push({ target, path: destination, status });
+  }
+
+  return { ok: true, command: 'skill', source, installed };
+}
+
 async function run(options, state) {
   if (options.version || options.command === 'version') {
     await emit({ ok: true, name: pkg.name, version: pkg.version }, options.pretty);
@@ -586,6 +710,13 @@ async function run(options, state) {
 
     case 'generate': {
       const result = await runGenerate(options);
+      await emit(result, options.pretty);
+      return result.ok ? 0 : 1;
+    }
+
+    case 'skill': {
+      const result = await runSkill(options);
+      if (result && result.printed) return 0;
       await emit(result, options.pretty);
       return result.ok ? 0 : 1;
     }

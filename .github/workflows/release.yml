@@ -64,7 +64,18 @@ jobs:
           exit 1
 
       - name: Build installers
-        run: npx electron-builder --${{ matrix.platform }} --publish never
+        shell: bash
+        run: |
+          # electron-builder downloads helper tools at build time; their CDN
+          # can also return transient 5xx responses.
+          for attempt in 1 2 3; do
+            if npx electron-builder --${{ matrix.platform }} --publish never; then
+              exit 0
+            fi
+            echo "electron-builder failed (attempt $attempt of 3); retrying in 30s..." >&2
+            sleep 30
+          done
+          exit 1
 
       - name: Upload installers
         uses: actions/upload-artifact@v4

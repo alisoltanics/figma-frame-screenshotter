@@ -2005,6 +2005,7 @@ module.exports = {
 const CLI_COMMANDS = new Set([
   'capture',
   'generate',
+  'skill',
   'session',
   'import-firefox',
   'sample',
