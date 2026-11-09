@@ -1,0 +1,44 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+ROOT="$(cd -- "$(dirname -- "$(readlink -f -- "${BASH_SOURCE[0]}")")/.." && pwd)"
+
+ELECTRON_BIN=""
+if [[ -x "$ROOT/node_modules/electron/dist/electron" ]]; then
+  ELECTRON_BIN="$ROOT/node_modules/electron/dist/electron"
+elif [[ -x "$ROOT/node_modules/electron/dist/Electron.app/Contents/MacOS/Electron" ]]; then
+  ELECTRON_BIN="$ROOT/node_modules/electron/dist/Electron.app/Contents/MacOS/Electron"
+elif [[ -x "$ROOT/node_modules/electron/dist/electron.exe" ]]; then
+  ELECTRON_BIN="$ROOT/node_modules/electron/dist/electron.exe"
+fi
+
+if [[ -z "$ELECTRON_BIN" ]]; then
+  echo "Electron is not installed. Run: cd \"$ROOT\" && npm install" >&2
+  exit 1
+fi
+
+# Headless Linux: re-exec under Xvfb when no display is available.
+if [[ -z "${DISPLAY:-}" && -z "${WAYLAND_DISPLAY:-}" && -z "${FIGMA_SHOT_XVFB:-}" ]]; then
+  if command -v xvfb-run >/dev/null 2>&1; then
+    export FIGMA_SHOT_XVFB=1
+    exec xvfb-run -a "$0" "$@"
+  fi
+
+  echo "No display found. Install xvfb and run again, or start a desktop session." >&2
+  exit 1
+fi
+
+ARGS=()
+
+if [[ "$(uname -s)" == "Linux" ]]; then
+  SANDBOX_BIN="$ROOT/node_modules/electron/dist/chrome-sandbox"
+  if [[ ! -u "$SANDBOX_BIN" || "$(stat -c '%u' "$SANDBOX_BIN" 2>/dev/null || echo 0)" != "0" ]]; then
+    ARGS+=(--no-sandbox)
+  fi
+fi
+
+if [[ -n "${FIGMA_SHOT_USER_DATA_DIR:-}" ]]; then
+  ARGS+=("--user-data-dir=$FIGMA_SHOT_USER_DATA_DIR")
+fi
+
+exec "$ELECTRON_BIN" "${ARGS[@]}" "$ROOT/cli.js" "$@"

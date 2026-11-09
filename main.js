@@ -208,6 +208,7 @@ let batchRunning = false;
 let projectGenerating = false;
 let stopRequested = false;
 let activeStop = null;
+let logSink = null;
 
 class ItemError extends Error {
   constructor(message) {
@@ -235,6 +236,22 @@ function sendEvent(payload) {
 
 function log(message, level = 'info') {
   sendEvent({ type: 'log', level, message });
+  if (logSink) {
+    try {
+      logSink(String(message), level);
+    } catch {
+      // A broken log sink must not interrupt a capture.
+    }
+  }
+}
+
+function setLogSink(handler) {
+  logSink = typeof handler === 'function' ? handler : null;
+}
+
+function requestStop() {
+  stopRequested = true;
+  if (activeStop) activeStop();
 }
 
 async function getFigmaSessionStatus() {
@@ -1610,7 +1627,7 @@ async function selectProjectPage(webContents, pageId, isStopped) {
   await wait(1_500);
 }
 
-async function generateProjectLinks(projectUrl) {
+async function generateProjectLinks(projectUrl, isStopped = () => false) {
   let parsed;
 
   try {
@@ -1629,7 +1646,6 @@ async function generateProjectLinks(projectUrl) {
   }
 
   const baseUrl = `${parsed.origin}${parsed.pathname}`;
-  const isStopped = () => false;
   const win = new BrowserWindow({
     width: 1400,
     height: 900,
@@ -1911,8 +1927,7 @@ function registerIpcHandlers() {
       return { ok: false, error: 'No batch is running.' };
     }
 
-    stopRequested = true;
-    if (activeStop) activeStop();
+    requestStop();
     return { ok: true };
   });
 
@@ -1926,15 +1941,89 @@ function registerIpcHandlers() {
   });
 }
 
-app.whenReady().then(() => {
-  registerIpcHandlers();
-  createMainWindow();
+module.exports = {
+  QUALITY_PRESETS,
+  normalizeItem,
+  parseNodeIds,
+  captureItem,
+  executeBatch,
+  generateProjectLinks,
+  getFigmaSessionStatus,
+  readFirefoxCookies,
+  applyFirefoxCookies,
+  ensureDownloadHandler,
+  safePathPart,
+  safeErrorMessage,
+  setLogSink,
+  requestStop
+};
 
-  app.on('activate', () => {
-    if (!mainWindow) createMainWindow();
+const CLI_COMMANDS = new Set([
+  'capture',
+  'generate',
+  'session',
+  'import-firefox',
+  'sample',
+  'help',
+  'version'
+]);
+
+function hasCliArguments(argv) {
+  return argv
+    .slice(1)
+    .some(
+      (argument) =>
+        argument === '-h' ||
+        argument === '--help' ||
+        argument === '-V' ||
+        argument === '--version' ||
+        CLI_COMMANDS.has(argument)
+    );
+}
+
+// Electron does not set require.main to the app entry point, so detect it by
+// looking for our own path in process.argv (dev) or the packaged app flag.
+function isElectronAppEntry(argv) {
+  if (app.isPackaged) return true;
+
+  const targets = new Set([
+    __filename,
+    __dirname,
+    path.join(__dirname, 'main.js'),
+    path.join(__dirname, 'package.json')
+  ]);
+
+  return argv.some((argument, index) => {
+    if (index === 0) return false;
+
+    try {
+      return targets.has(path.resolve(process.cwd(), argument));
+    } catch {
+      return false;
+    }
   });
-});
+}
 
-app.on('window-all-closed', () => {
-  if (process.platform !== 'darwin') app.quit();
-});
+function startGui() {
+  app.whenReady().then(() => {
+    registerIpcHandlers();
+    createMainWindow();
+
+    app.on('activate', () => {
+      if (!mainWindow) createMainWindow();
+    });
+  });
+
+  app.on('window-all-closed', () => {
+    if (process.platform !== 'darwin') app.quit();
+  });
+}
+
+if (process.env.FIGMA_SHOT_CLI !== '1' && isElectronAppEntry(process.argv)) {
+  if (hasCliArguments(process.argv)) {
+    require('./cli.js');
+  } else {
+    startGui();
+  }
+}
+

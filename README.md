@@ -134,6 +134,107 @@ Notes:
   Empty page names fall back to `Page 1`, `Page 2`, and so on.
 - Duplicate names get a numeric suffix so no file is overwritten.
 
+## Command-line interface
+
+`figma-shot` runs the same capture pipeline without opening the UI, which makes
+it easy to call from scripts and AI agents.
+
+```bash
+# From a git checkout (after npm install)
+./bin/figma-shot capture --url "https://www.figma.com/design/AbCdEf123456/Example-Project?node-id=1-2" \
+  --out ./screenshots --quality normal
+
+# The installed desktop app exposes the same commands
+figma-frame-screenshotter capture --links ./links.json --out ./screenshots --quality high
+```
+
+On Windows use `bin\figma-shot.cmd`. In a git checkout you can also run
+`npm run cli -- <command>`.
+
+### Commands
+
+| Command | Purpose |
+| --- | --- |
+| `capture` | Capture frames or pages from `--url` or `--links`. |
+| `generate` | Read a Figma project/file and write a `links.json` file. |
+| `session` | Report whether a Figma session is available. |
+| `import-firefox` | Import the Firefox Figma session. |
+| `sample` | Print a sample `links.json` array. |
+
+### Capture
+
+```bash
+figma-shot capture --url <figma-url> --out <dir> [options]
+figma-shot capture --links <links.json> --out <dir> [options]
+```
+
+| Option | Meaning |
+| --- | --- |
+| `--url <url>` | Figma frame or page URL. Repeat the flag for several URLs. |
+| `--links <file>` | Read entries from a `links.json` file. |
+| `--out <dir>` | Output folder (required). |
+| `--quality <mode>` | `normal` (2x, default) or `high` (4x). |
+| `--folder <name>` | Output subfolder for `--url` entries (default `captures`). |
+| `--name <name>` | File name for a single `--url` entry. |
+| `--timeout <seconds>` | Stop the run after this many seconds. |
+| `--import-firefox` | Import the Firefox session if no session is found. |
+
+### Generate
+
+```bash
+figma-shot generate --project "https://www.figma.com/design/AbCdEf123456/Example-Project" \
+  --out ./links.json
+```
+
+| Option | Meaning |
+| --- | --- |
+| `--project <url>` | Figma project or file URL (required). |
+| `--out <file.json>` | Where to write the file (required). |
+| `--include-items` | Include the generated entries in the JSON result. |
+| `--timeout <seconds>` | Stop after this many seconds. |
+
+### General options
+
+- `--user-data-dir <dir>` uses a different Electron profile, so the CLI can use
+  a separate Figma session. In a git checkout you can also set
+  `FIGMA_SHOT_USER_DATA_DIR`.
+- `--pretty` pretty-prints the JSON result.
+- `--verbose` sends progress and log lines to stderr.
+- `--quiet` suppresses non-error stderr output.
+- `-h`, `--help` prints usage; `-V`, `--version` prints the version.
+
+### Output and exit codes
+
+`stdout` contains exactly one JSON object per run, so a caller can parse it
+directly. Progress, warnings, and errors are written to `stderr`.
+
+```json
+{
+  "ok": true,
+  "command": "capture",
+  "quality": "normal",
+  "outputDir": "/home/user/screenshots",
+  "success": 1,
+  "failed": 0,
+  "stopped": false,
+  "timedOut": false,
+  "files": ["/home/user/screenshots/landing/desktop.png"]
+}
+```
+
+| Exit code | Meaning |
+| --- | --- |
+| `0` | The command finished successfully. |
+| `1` | A capture failed, the run was stopped, or authentication is required. |
+| `2` | Invalid command-line usage. |
+
+A stopped or timed-out run never writes partially captured images. Use
+`--timeout` for unattended runs instead of relying on an external kill.
+
+Authentication uses the same persistent `persist:figma` partition as the
+desktop app. Sign in through the app, run `figma-shot import-firefox`, or pass
+`--import-firefox` to `capture`/`generate`.
+
 ## Builds and releases
 
 The app can be packaged for Linux, Windows, and macOS with
@@ -169,6 +270,9 @@ secrets.
 
 - `main.js` — Electron main process: capture, quality modes, export/ZIP
   handling, tiling, JSON generation, and IPC.
+- `cli.js` — the non-interactive command-line interface.
+- `bin/figma-shot` / `bin/figma-shot.cmd` — CLI launchers for Linux/macOS and
+  Windows.
 - `preload.js` — the small secure bridge exposed to the UI.
 - `index.html` — the interface (HTML/CSS/JS, no framework).
 - `install.sh` / `launch.sh` — optional desktop integration helpers.

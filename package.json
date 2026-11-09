@@ -1,6 +1,6 @@
 {
   "name": "figma-frame-screenshotter",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "private": true,
   "description": "Capture Figma frames as PNG files",
   "author": "Figma Frame Screenshotter",
@@ -8,6 +8,7 @@
   "main": "main.js",
   "scripts": {
     "start": "electron .",
+    "cli": "electron cli.js",
     "install:desktop": "bash install.sh",
     "pack": "electron-builder --dir",
     "dist": "electron-builder",
