@@ -17,6 +17,14 @@ const path = require('node:path');
 const core = require('./main.js');
 const pkg = require('./package.json');
 
+// Running `electron cli.js` makes Electron name the app "Electron", which
+// would use ~/.config/Electron instead of the desktop app's profile. Align the
+// name and user-data folder with the desktop app before Electron reads them.
+if (app.getName() === 'Electron') {
+  app.setName(pkg.name);
+  app.setPath('userData', path.join(app.getPath('appData'), pkg.name));
+}
+
 const SAMPLE_LINKS = [
   {
     folder: 'landing',

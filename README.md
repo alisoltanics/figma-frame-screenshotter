@@ -11,7 +11,8 @@ npm install
 npm start
 ```
 
-To add the app to your Ubuntu application list with an icon:
+To add the app to your Ubuntu application list with an icon and install the
+`figma-shot` command into `~/.local/bin`:
 
 ```bash
 ./install.sh
