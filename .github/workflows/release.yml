@@ -65,6 +65,10 @@ jobs:
 
       - name: Build installers
         shell: bash
+        env:
+          # GitHub's release CDN intermittently returns 504 for the AppImage and
+          # fpm tools. Use the npmmirror binary mirror on Linux only.
+          ELECTRON_BUILDER_BINARIES_MIRROR: ${{ matrix.platform == 'linux' && 'https://npmmirror.com/mirrors/electron-builder-binaries/' || '' }}
         run: |
           # electron-builder downloads helper tools at build time; their CDN
           # can also return transient 5xx responses.
