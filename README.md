@@ -4,6 +4,8 @@ A small Electron app that captures Figma frames as PNG files. It reads a
 `links.json` file, captures every item, splits very tall frames into several
 tiles, and reports exactly which files were saved where.
 
+![Figma Frame Screenshotter](assets/app-screenshot.png)
+
 ## Install and run
 
 ```bash
